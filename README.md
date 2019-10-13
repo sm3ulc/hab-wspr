@@ -11,7 +11,7 @@ https://qrp-labs.com/flights/s4.html
 
 # Installation
 
-  git clone https://github.com/sm3ulc/hab-wspr
+	git clone https://github.com/sm3ulc/hab-wspr
 
 The package requires some extra modules that need to be installed via pip or similar
 
@@ -24,4 +24,4 @@ Edit balloon.ini and add aprs-is user, callsigns, balloons etc
 
 To run:
 
-   python3 webscrape.py
+	python3 webscrape.py
