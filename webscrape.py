@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
-# port urllib3
-
+from bs4 import BeautifulSoup  
 import configparser
 import csv
 import datetime
@@ -16,12 +15,18 @@ from telemetry import *
 
 config = configparser.ConfigParser()
 config.read('balloon.ini')
-
 push_habhub = config['main']['push_habhub']
-
 push_aprs = config['main']['push_aprs']
 balloons = config['main']['balloons']
 
+balloons = json.loads(config.get('main','balloons'))
+
+print("Tracking these balloons:")
+for b in balloons:
+      print(b)
+# print("Tracking these balloons:\n",type(balloons))
+
+# sys.exit(0)
 
 def getspots (nrspots):
 #    print("Fetching...")
@@ -36,9 +41,6 @@ def getspots (nrspots):
 #    print(page.data)
 
     soup = BeautifulSoup(page.content, 'html.parser')
-
-    # soup = BeautifulSoup(page, 'html.parser')
-    # print (soup.prettify())
 
     data = []
     table = soup.find_all('table')[2]
@@ -96,7 +98,6 @@ def dumpnewdb(spotlist):
 
 # Fitler out only calls from balloons and telemetrypackets
 def balloonfilter(spots,balloons):
-
     filtered = []
     calls = []
     for b in balloons:

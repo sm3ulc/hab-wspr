@@ -15,8 +15,8 @@ https://qrp-labs.com/flights/s4.html
 
 The package requires some extra modules that need to be installed via pip or similar
 
-    apt install python-httplib2 python-requests
-
+    apt install python-httplib2 python-requests python3-bs4
+    
 # Configuration
 
 Edit balloon.ini and add aprs-is user, callsigns, balloons etc
