@@ -16,10 +16,8 @@ import sqlite3
 import sys
 import time
 
-
-# https://github.com/scivision/maidenhead
 import maidenhead
-from maidenhead import toLoc
+# from maidenhead import toLo
 
 from balloon import *
 from sonde_to_aprs import * 
@@ -27,9 +25,12 @@ from sonde_to_aprs import *
 # Power to decimal conversion table 
 pow2dec = {0:0,3:1,7:2,10:3,13:4,17:5,20:6,23:7,27:8,30:9,33:10,37:11,40:12,43:13,47:14,50:15,53:16,57:17,60:18}
 
-habhub_callsign = "MYCALL"
+# habhub_callsign = "SM4ULC"
+balloons = config['main']['habhub_callsign']
+
 # push_habhub = False
 # push_aprs = False
+
 
 
 def trim(spots):
@@ -604,7 +605,7 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
 #                            print(seqnr)
 
                             # telemetry = [ spot_pos_time, spot_pos_call, lat, lon, loc, alt, temp, batt, speed, gps, sats ]
-                            telestr = "%s,%d,%s,%.5f,%.5f,%d,%d,%.2f,%d,%d,%d" % (  
+                            telestr = "%s,%d,%s,%.5f,%.5f,%d,%d,%.2f,%.2f,%d,%d" % (  
                                 balloon_name, seqnr, telemetry['time'].strftime('%H:%M'), telemetry['lat'], telemetry['lon'],
                                 telemetry['alt'], telemetry['speed'], telemetry['temp'], telemetry['batt'], telemetry['gps'], telemetry['sats'])
 

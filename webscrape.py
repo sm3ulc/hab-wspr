@@ -2,6 +2,7 @@
 
 # port urllib3
 
+import configparser
 import datetime
 import re
 import requests
@@ -14,9 +15,17 @@ import time
 from balloon import *
 from telemetry import *
 
+config = configparser.ConfigParser()
+config.read('balloon.ini')
+
+push_habhub = config['main']['push_habhub']
+
+push_aprs = config['main']['push_aprs']
+balloons = config['main']['balloons']
+
+
 def getspots (nrspots):
 #    print("Fetching...")
-#    wiki = "http://wsprnet.org/olddb?mode=html&band=all&limit=" + str(nrspots) + "&findcall=&findreporter=&sort=date"
     wiki = "http://wsprnet.org/olddb?mode=html&band=all&limit=" + str(nrspots) + "&findcall=&findreporter=&sort=spotnum"
     try:
         page = requests.get(wiki)
@@ -94,8 +103,6 @@ def balloonfilter(spots,balloons):
     for b in balloons:
         calls.append(b[1])
 
-#     print("calls:", calls)
-
     for row in spots:
         for c in calls:
             if row[1] == c:
@@ -142,18 +149,10 @@ def deduplicate(spotlist):
     return spotlist
 
 
-# Name, Call, Freq (MHz (int)), channel
-
-balloons = [[ "BAL-1","VY1XYZ",14,11]]
-
-
 spots = []
 
+# Read active balloons from db
 # balloons = readballoonsdb()
-
-
-push_habhub = True
-push_aprs = True
 
 # Spots to pull from wsprnet
 nrspots_pull= 2000
@@ -166,14 +165,10 @@ spotcache = balloonfilter(spotcache ,balloons)
 print("Fspots2",len(spotcache))
 
 spots = spotcache
-
-
-
 cache_max = 10000
 new_max = 0
 only_balloon=False
 sleeptime = 60
-
 
 print("Entering pollingloop.")
 while 1==1:
