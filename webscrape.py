@@ -3,11 +3,10 @@
 # port urllib3
 
 import configparser
+import csv
 import datetime
 import re
 import requests
-from bs4 import BeautifulSoup
-import csv
 import sqlite3
 import sys
 import time

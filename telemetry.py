@@ -1,13 +1,10 @@
 #!/usr/bin/python3.6
 
 from base64 import b64encode
-from bs4 import BeautifulSoup
 import csv
 import datetime
 from datetime import datetime,timedelta
-import datetime
 import gzip
-from hashlib import sha256
 import httplib2
 import json
 import re
@@ -17,7 +14,6 @@ import sys
 import time
 
 import maidenhead
-# from maidenhead import toLo
 
 from balloon import *
 from sonde_to_aprs import * 
@@ -25,13 +21,7 @@ from sonde_to_aprs import *
 # Power to decimal conversion table 
 pow2dec = {0:0,3:1,7:2,10:3,13:4,17:5,20:6,23:7,27:8,30:9,33:10,37:11,40:12,43:13,47:14,50:15,53:16,57:17,60:18}
 
-# habhub_callsign = "SM4ULC"
 balloons = config['main']['habhub_callsign']
-
-# push_habhub = False
-# push_aprs = False
-
-
 
 def trim(spots):
     # Clean out old spots
