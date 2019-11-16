@@ -2,19 +2,19 @@
 
 ## High altittude ballon tracking via WSPR
 
-The software webscrapes data from wsprnet.org, filter out calls from the balloons and decode additional telemetry. 
+The software webscrapes data from wsprnet.org, filter out calls from the balloons and decode additional telemetry. Currently the script supports upload to the habhub tracker ( https://tracker.habhub.org/ ) and aprs-fi ( https://aprs.fi ).
 
-There are existing functions to load/save flightdata from csv/wsprnet-archive-files.
-
-http://wsprnet.org/drupal/downloads
+There are existing functions to load/save flightdata from csv/wsprnet-archive-files. ( http://wsprnet.org/drupal/downloads )
 
 The protocol for the telemetry is described here:
 
-https://qrp-labs.com/flights/s4.html
+* https://qrp-labs.com/flights/s4.html
 
 # Installation
 
-  git clone https://github.com/sm3ulc/hab-wspr
+First clone the repo:
+
+        git clone https://github.com/sm3ulc/hab-wspr
 
 The package requires some extra modules that need to be installed via pip or similar
 
