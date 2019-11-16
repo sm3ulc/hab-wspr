@@ -2,7 +2,10 @@
 
 ## High altittude ballon tracking via WSPR
 
-The software webscrapes data from wsprnet.org, filter out calls from the balloons and decode additional telemetry. Currently the script supports upload to the habhub tracker ( https://tracker.habhub.org/ ) and aprs-fi ( https://aprs.fi ).
+The software webscrapes data from wsprnet.org, filter out calls from the balloons and decode additional telemetry. Currently the script supports upload to:
+
+* habhub tracker ( https://tracker.habhub.org/ )
+* aprs-fi ( https://aprs.fi ).
 
 There are existing functions to load/save flightdata from csv/wsprnet-archive-files. ( http://wsprnet.org/drupal/downloads )
 
