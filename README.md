@@ -55,7 +55,7 @@ To run on linux: (with default config file balloon.ini)
 
 <pre>
 python3 webscrape.py
-<pre>
+</pre>
 
 
 The scripts work with a database in sqlite. It can be used to do all kinds of output/export like checking the last sent spots:
