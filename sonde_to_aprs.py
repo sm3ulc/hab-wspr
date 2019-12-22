@@ -18,35 +18,30 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-
+import configparser
 import time, datetime, urllib3, sys
-# from pykml import parser
 from socket import *
 
 # APRS-IS login info
 serverHost = 'euro.aprs2.net' # Pick a local server if you like
 serverPort = 14580
 
-aprsUser = 'xxxx' # Replace with your own callsign. This should NOT have any SSID's on it (i.e. -9)
-aprsPass = '12345' # APRS-IS passcode for your callsign.
+config = configparser.ConfigParser()
+config.read('balloon.ini')
+aprsUser = config['main']['aprsUser']
+aprsPass = config['main']['aprsPass']
 
 # APRS packet Settings
-callsign = aprsUser # This is the callsign the object comes from. Doesn't necessarily have to be the same as your APRS-IS login. 
-callsign = "xxxx"
-
-# aprsUser # This is the callsign the object comes from. Doesn't necessarily have to be the same as your APRS-IS login. 
-
-update_rate = 30 # Update rate, in seconds.
+# This is the callsign the object comes from. Doesn't necessarily have to be the same as your APRS-IS login. 
+callsign = config['main']['aprsCallsign']
 
 # Get KML from SondeMonitor and parse into a Python dictionary
 def get_sonde():
 	sonde_data = {}
-
 	sonde_data["lat"] = str(sys.argv[2])
 	sonde_data["lon"] = str(sys.argv[3])
 	sonde_data["alt"] = "10000"
 	sonde_data["id"] = str(sys.argv[1])
-
 	return sonde_data
 
 # Push a Radiosonde data packet to APRS as an object.
@@ -82,7 +77,7 @@ def push_balloon_to_aprs(sonde_data):
 	alt = int(float(sonde_data["alt"])/0.3048)
 	
 	# Produce the APRS object string.
-	out_str = ";%s*111111z%s/%sO000/000/A=%06d Ballooon" % (object_name,lat_str,lon_str,alt)
+	out_str = ";%s*111111z%s/%sO000/000/A=%06d Balloon" % (object_name,lat_str,lon_str,alt)
 	print(out_str)
 
 	# Connect to an APRS-IS server, login, then push our object position in.

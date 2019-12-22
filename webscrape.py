@@ -4,7 +4,8 @@ from bs4 import BeautifulSoup
 import configparser
 import csv
 import datetime
-import re
+import getopt
+import os
 import requests
 import sqlite3
 import sys
@@ -13,23 +14,8 @@ import time
 from balloon import *
 from telemetry import *
 
-config = configparser.ConfigParser()
-config.read('balloon.ini')
-push_habhub = config['main']['push_habhub']
-push_aprs = config['main']['push_aprs']
-balloons = config['main']['balloons']
-
-balloons = json.loads(config.get('main','balloons'))
-
-print("Tracking these balloons:")
-for b in balloons:
-      print(b)
-# print("Tracking these balloons:\n",type(balloons))
-
-# sys.exit(0)
-
 def getspots (nrspots):
-#    print("Fetching...")
+#    logging.info("Fetching...")
     wiki = "http://wsprnet.org/olddb?mode=html&band=all&limit=" + str(nrspots) + "&findcall=&findreporter=&sort=spotnum"
     try:
         page = requests.get(wiki)
@@ -37,8 +23,8 @@ def getspots (nrspots):
         print("ERROR",e)
         return []
 
-#    print(page.status)
-#    print(page.data)
+#    logging.info(page.status)
+#    logging.info(page.data)
 
     soup = BeautifulSoup(page.content, 'html.parser')
 
@@ -122,7 +108,7 @@ def balloonfilter(spots,balloons):
                 filtered.append(row)
 
 #    for r in filtered:
-#        print("filtered out",r)
+#        logging.info("filtered out",r)
 
     return filtered
 
@@ -134,35 +120,149 @@ def deduplicate(spotlist):
     rc_max = len(spotlist)-1
     if rc_max > 1:
         while rc < rc_max:
-#            print("R:",rc, rc_max, len(spotlist))
-#            print(spotlist[rc])
-#            print(spotlist[rc+1])
             if (spotlist[rc][0] == spotlist[rc+1][0]) and (spotlist[rc][1] == spotlist[rc+1][1]):
-#                print("Duplicate entry")
+#                logging.info("Duplicate entry")
                 del spotlist[rc]
                 rc_max -= 1
             else:
                 rc += 1
 
-
 #    print("Deduplicate:",pre, len(spotlist))
     return spotlist
 
 
+# Setup logging
+
+level    = logging.INFO
+format   = '%(asctime)s - %(message)s'
+handlers = [logging.FileHandler('logging.txt','a'), logging.StreamHandler()]
+logging.basicConfig(level = level, format = format, handlers = handlers, datefmt='%y-%m-%d %H:%M:%S')
+
+#
+# Some options
+# 
+
+verbose = False
+archive_file = ''
+csv_file = ''
+conf_file = 'balloon.ini'
+dry_run = True
+
+print("ARGV      :", sys.argv[1:])
+
+try:
+      options, remainder = getopt.getopt(
+            sys.argv[1:],
+            'c:f:v',
+                ['archive=',
+                 'csv=',
+                 'conf=',
+                ])
+
+except getopt.GetoptError as err:
+    print('ERROR:', erxr)
+    sys.exit(1)
+
+
+logging.info("OPTIONS   : %s", str(options))
+      
+for opt, arg in options:
+    if opt in ('--archive'):
+        archive_file = arg
+    if opt in ('--csv'):
+        csv_file = arg
+    if opt in ('--conf'):
+        conf_file = arg
+    if opt in ('--dry_run'):
+        dry_run = True
+    elif opt in ('-v', '--verbose'):
+        verbose = True
+
+config = configparser.ConfigParser()
+config.read(conf_file)
+push_habhub = config['main']['push_habhub']
+push_aprs = config['main']['push_aprs']
+# balloons = config['main']['balloons']
+
+balloons = json.loads(config.get('main','balloons'))
+            
+logging.info("Tracking these balloons:")
+for b in balloons:
+      logging.info("%s", str(b))
+
+if dry_run:
+      push_habhub = False
+      push_aprs = False
+      
 spots = []
 
-# Read active balloons from db
-# balloons = readballoonsdb()
+#
+# Load and process spots from archive-file - default append to csv
+#
 
-# Spots to pull from wsprnet
+if archive_file:
+      logging.info("Archive-mode")
+
+      # Read archivefile and filter out balloondata
+      spots = readgz(balloons, archive_file)
+      # logging.info(spots[0])
+      spots.sort(reverse=False)
+
+      # Do a crude trimetrim 
+      # temp_spots = []
+      #for s in spots:
+      #      if s[0] > datetime.datetime(2018, 5, 15, 0, 0) and s[0] > datetime.datetime(2018, 5, 15, 0, 0):
+      #            temp_spots.append(s)
+      # spots = temp_spots
+      
+      dumpcsv(spots)
+
+      if len(spots) > 1:
+            logging.info("Spots: %s", str(len(spots)))
+            spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs)
+      else:
+            logging.info("No spots!")
+            
+      logging.info("Done")
+      sys.exit(0)
+
+#
+# Load and process spots from csv-file
+#
+      
+if csv_file:
+      push_habhub = False
+      push_aprs = False
+
+      spots = readcsv()
+
+      # Do a crude trimetrim 
+      # temp_spots = []
+      # for s in spots:
+      #     if s[0] > datetime.datetime(2019, 12, 18, 11, 0) and s[0] < datetime.datetime(2019, 12, 18, 12, 30):
+      #         # print(s)
+      #         temp_spots.append(s)
+      # spots = temp_spots
+
+      
+      if len(spots) > 1:
+            logging.info("Spots: %s", str(len(spots)))
+            spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs)
+      else:
+            logging.info("No spots!")
+
+      logging.info("Done")
+      sys.exit(0)
+            
+# Spots to pullfrom wsprnet
 nrspots_pull= 2000
 spotcache = []
 
-print("Preloading cache from wsprnet...")
+logging.info("Preloading cache from wsprnet...")
 spotcache = getspots(10000)
-print("Fspots1",len(spotcache))
+logging.info("Fspots1: %d",len(spotcache))
 spotcache = balloonfilter(spotcache ,balloons)
-print("Fspots2",len(spotcache))
+logging.info("Fspots2: %s", len(spotcache))
 
 spots = spotcache
 cache_max = 10000
@@ -170,24 +270,17 @@ new_max = 0
 only_balloon=False
 sleeptime = 60
 
-print("Entering pollingloop.")
+logging.info("Entering pollingloop.")
 while 1==1:
     tnow = datetime.datetime.now() 
 
     wwwspots = getspots(nrspots_pull)
     wwwspots = balloonfilter(wwwspots ,balloons)
     newspots = [] 
-    # 
-    # wwwspots.reverse()
-
-#    for q in spotcache:
-#        print("cache:",q)
 
     # Sort in case some spots arrived out of order
-
     spotcache.sort(reverse=False)   
     spotcache = timetrim(spotcache,120)
-
 
     src_cc = 0 
 
@@ -203,7 +296,8 @@ while 1==1:
                 break
 
         if old == 0:
-            print("New",row)
+            # logging.info("New",str(row))
+            logging.info("New spot: %s"<,row)
             
             # Insert in beginning for cache
             spotcache.insert(0, row)
@@ -231,16 +325,16 @@ while 1==1:
 
 
     if len(spots) > 1:
-        print("pre-tele:",len(spots))
+        logging.info("pre-tele: %d",len(spots))
         spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs)
-        # print("pro-tele:",len(spots))
+        print("pro-tele:",len(spots))
 
     if new_max < len(newspots):
 #  and len(newspots) != nrspots_pull:
         new_max = len(newspots)
 
     if len(newspots) == nrspots_pull:
-        print("Hit max spots. Increasing set to fetch")
+        logging.info("Hit max spots. Increasing set to fetch")
         nrspots_pull += 100
 
 #    print("%s Spots: %6d New: %5d (max: %5d) Nrspots: %5d Looptime: %s Checks: %8d Hitrate: %5.2f%%" % 
@@ -251,9 +345,8 @@ while 1==1:
 
     spotcache = spotcache[:cache_max]
 
-
     sleeping = sleeptime - int(datetime.datetime.now().strftime('%s')) % sleeptime
-#     print("Sleep:", sleeping)
+#     logging.info("Sleep:", sleeping)
     time.sleep(sleeping)
 
 

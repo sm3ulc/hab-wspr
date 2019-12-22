@@ -7,60 +7,83 @@ The software webscrapes data from wsprnet.org, filter out calls from the balloon
 * habhub tracker ( https://tracker.habhub.org/ )
 * aprs-fi ( https://aprs.fi ).
 
-There are existing functions to load/save flightdata from csv/wsprnet-archive-files. ( http://wsprnet.org/drupal/downloads )
+There are existing functions to load/save flightdata from csv/wsprnet-archive-files.
+( http://wsprnet.org/drupal/downloads )
 
 The protocol for the telemetry is described here:
 
 * https://qrp-labs.com/flights/s4.html
 
+
 # Installation
 
 First clone the repo:
 
-        git clone https://github.com/sm3ulc/hab-wspr
+<pre>
+git clone https://github.com/sm3ulc/hab-wspr
+</pre>
 
 The package requires some extra modules that need to be installed via pip or similar
 
-    apt install python-httplib2 python-requests python3-bs4
-    
+<pre>
+apt install python-httplib2 python-requests python3-bs4
+</pre>
+
+
+For windows users install anaconda with python 3.
+
+<pre>
+pip install httplib2
+pip install bs4
+</pre>
+
 # Configuration
 
 Edit balloon.ini and add aprs-is user etc. Add balloons on the format:
 
-     [ habhub name, ham callsign for the balloon , band in mhz, channel ]
+<pre>
+[ habhub name, ham callsign for the balloon , band in mhz, channel, timeslot ]
+</pre>
+
+timeslot = 0 to disable use of timeslots. 1-5, use correspondent slot 00, 02, 04 etc.
+
 
 Uploads to APRS-IS is done by adding the SSID "-12" to the default balloon-callsign.
 
 
-To run:
+To run on linux: (with default config file balloon.ini)
 
-	python3 webscrape.py
+<pre>
+python3 webscrape.py
+<pre>
 
 
 The scripts work with a database in sqlite. It can be used to do all kinds of output/export like checking the last sent spots:
 
-    sqlite3 wsprdb.db 'select * from sentspots order by time_sent desc limit 30'
+<pre>
+sqlite3 wsprdb.db 'select * from sentspots order by time_sent desc limit 30'
+</pre>
 
 # Testing
 
-Adjust your balloon.ini
+Adjust your balloon.ini or other configfile like test.ini.
 
 Goto http://wsprnet.org/drupal/downloads or
 
+<pre>
+wget http://wsprnet.org/archive/wsprspots-2019-12.csv.gz
+</pre>
 
-     wget http://wsprnet.org/archive/wsprspots-2019-12.csv.gz
+Extract data from archive and append filtered spots to spots.csv in and then process. 
 
-Extract data from archive and save filtered spots to spots.csv and then process. 
-
-      python3 webscrape.py --archive wsprspots-2019-12.csv.gz  --conf test.ini	 
-
+<pre>
+python3 webscrape.py --archive wsprspots-2019-12.csv.gz  --conf test.ini	 
+</pre>
 
 Read csv-file from spots.csv and process. 
 
-<pre>python3 webscrape.py
-
---csv spots.csv
-
+<pre>
+python3 webscrape.py --csv spots.csv
 </pre>
 
 

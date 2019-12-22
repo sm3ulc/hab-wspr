@@ -6,13 +6,17 @@ import csv
 import datetime
 from datetime import datetime,timedelta
 import gzip
+import hashlib
 import httplib2
+import logging
 import json
 import re
 import requests
 import sqlite3
 import sys
 import time
+
+from pprint import pformat
 
 import maidenhead
 
@@ -44,14 +48,6 @@ def trim(spots):
         print("Split pre",l,"splitc",spotc,"after:",len(spots))
         
     return spots
-
-#a = list(range(10))
-#a.reverse()
-#print(a)
-#a = trim(a)
-#print(a)
-#sys.exit(0)
-
 
 # Read new spots from database
 def readnewspotsdb():
@@ -112,8 +108,9 @@ def readnewspotsdb():
 
 
 def readgz(balloons, gzfile):
-    print("Reading gz:", gzfile)
-    
+    logging.info("Reading gz: %s", gzfile)
+
+    rows = 0
     spots = []
     calls = []
     for b in balloons:
@@ -123,29 +120,41 @@ def readgz(balloons, gzfile):
         spotsreader = csv.reader(csvfile, delimiter=',', quotechar='|')
 
         for row in spotsreader:
+            rows += 1
             # print(row)
             # Select correct fields in correct order
             row = [row[1], row[6], row[5], row[4], row[9], row[7], row[8],row[2],row[3],row[10]]
 
             # print(', '.join(row))
             for c in calls:
-#                print("Found", c, row)
                 if row[1] == c:
                     # Remove selfmade WSPR tranmissions
                     if len(row[5]) == 4:
                         row[0] = datetime.datetime.fromtimestamp(int(row[0]))
-#                        print("Found", c, row)
+                        row[3] = int(row[3])
+                        row[4] = int(row[4])
+
+                        # Strip "+" from dB
+                        row[6] = int(row[6].replace('+',''))
+                        row[9] = int(row[9])
+                        # print("Found", c, row)
                         spots.append(row)
 
             if re.match('(^0|^Q).[0-9].*', row[1]):
                 row[0] = datetime.datetime.fromtimestamp(int(row[0]))
- #               print("Found", row)
+                
+                row[3] = int(row[3])
+                row[4] = int(row[4])
+                        
+                # Strip "+" from dB
+                row[6] = int(row[6].replace('+',''))
+                row[9] = int(row[9])
+ 
                 spots.append(row)
+                # sys.exit(0)
 
-        print("Nr-calls+telem:", len(spots))
-
+        print("Total rows", rows, "Nr-calls+telem:", len(spots))
         csvfile.close()
-        print("Done reading")
 
     return spots
 
@@ -182,27 +191,19 @@ def decode_telemetry(spot_pos, spot_tele):
     c1 = spot_tele_call[1]
  #   print("C1=",c1)
     if c1.isalpha():
-        # print("c1=alpha")
         c1=ord(c1)-55
-        # print("new c1=",c1)    
     else:
         c1=ord(c1)-48
-
-    # print("new c1=",c1)  
 
     c2=ord(spot_tele_call[3])-65
     c3=ord(spot_tele_call[4])-65
     c4=ord(spot_tele_call[5])-65
-
-    # print("C:",c1,c2,c3,c4)
 
     # Convert locator to numbers
     l1=ord(spot_tele_loc[0])-65
     l2=ord(spot_tele_loc[1])-65
     l3=ord(spot_tele_loc[2])-48
     l4=ord(spot_tele_loc[3])-48
-
-    # print("L:",l1,l2,l3,l4)
 
     #
     # Convert power
@@ -249,8 +250,6 @@ def decode_telemetry(spot_pos, spot_tele):
     lsub2=lsub2+65
     subloc=(chr(lsub1)+chr(lsub2)).lower()
 
-    # print("alt:",alt,"subloc:", lsub1, lsub2_tmp, lsub2,subloc)
-
     # Temperature
     # 40*42*2*2
     temp_1=int(sum2_tot/6720)
@@ -282,7 +281,7 @@ def decode_telemetry(spot_pos, spot_tele):
     t4=int(t3/4)
     speed=t4*2
     r7=t3-t4*4
-    gps=r7/2
+    gps=int(r7/2)
     sats=r7%2
 
     # print("T1-4,R7:",t1, t2, t3, t4, r7)
@@ -293,12 +292,12 @@ def decode_telemetry(spot_pos, spot_tele):
     loc=spot_pos_loc+subloc
     lat,lon = (maidenhead.toLoc(loc))
     
-
-    print("%s Call: %6s Latlon: %10.5f %10.5f Loc: %6s Alt: %5d Temp: %6.2f Batt: %5.2f Speed: %3d GPS: %d Sats: %d" %
+    pstr =    ("Spot %s Call: %6s Latlon: %10.5f %10.5f Loc: %6s Alt: %5d Temp: %4.1f Batt: %5.2f Speed: %3d GPS: %1d Sats: %1d" %
           (  spot_pos_time, spot_pos_call, lat, lon, loc, alt, temp, batt, speed, gps, sats ))
+    logging.info(pstr)
 
     telemetry = {'time':spot_pos_time, "call":spot_pos_call, "lat":lat, "lon":lon, "loc":loc, "alt": alt,
-                 "temp":temp, "batt":batt, "speed":speed, "gps":gps, "sats":sats }
+                 "temp":round(temp,1), "batt":round(batt,3), "speed":speed, "gps":gps, "sats":sats }
 
     return telemetry
 
@@ -354,10 +353,7 @@ def addsentdb(name, time_rec, sentence):
     return
 
 
-import logging
-from pprint import pformat
 
-from subprocess import call
 
 def send_tlm_to_habitat2(sentence, callsign):
     result = call(["python2","./send_tlm_to_habitat.py", sentence,"sm0ulc"])
@@ -366,7 +362,7 @@ def send_tlm_to_habitat2(sentence, callsign):
 def send_tlm_to_habitat(sentence, callsign, spot_time):
     input=sentence
 
-    print("Pushing data to habhub")
+    logging.info("Pushing data to habhub")
 
 
     if not sentence.endswith('\n'):
@@ -394,34 +390,21 @@ def send_tlm_to_habitat(sentence, callsign, spot_time):
             },
         }
 
-#x    print(data)
 
     h = httplib2.Http("")
 
     resp, content = h.request(
-        uri="http://habitat.habhub.org:/habitat/_design/payload_telemetry/_update/add_listener/%s" % sha256(sentence2).hexdigest(),
+        uri="http://habitat.habhub.org:/habitat/_design/payload_telemetry/_update/add_listener/%s" % hashlib.sha256(sentence2).hexdigest(),
         method='PUT',
         headers={'Content-Type': 'application/json; charset=UTF-8'},
         body=json.dumps(data),
     )
-#    logging.info("Response dictionary")
-#    logging.info(pformat(resp))
-#    logging.info("Response Content Body")
-#    logging.info(pformat(content))
-
-#    print("Response dictionary")
-#    print(pformat(resp))
-#    print("Response Content Body")
-#    print(pformat(content))
 
     print(resp['status'])
     if resp['status'] == '201':
         print("OK 201", input)
-#        sys.exit(0)
     elif resp['status'] == '403':
         print("Error 403 - already uploaded")
-
-#    time.sleep(1)
 
     return
 
@@ -430,7 +413,6 @@ def send_tlm_to_habitat(sentence, callsign, spot_time):
 # Trim off older spots. Assuming oldest first!
 #
 def timetrim(spots, m):
-
     if len(spots) == 0:
         return spots
 
@@ -444,22 +426,11 @@ def timetrim(spots, m):
         spotc += 1
 #        print(r[0], "vs ", time_last)
         if r[0] < time_last:
-            #                if splitspotc == 0:
-#            print("split time found")
             splitspotc = spotc
-#            break
 
     l = len(spots)
     if splitspotc > 0:
         spots = spots[splitspotc:]
- #       print("splitting")
-#    else:
- #       print("no splitting")
-
-#    print("Split pre",l,"splitc",spotc,"after:",len(spots),"time-cut", time_last, splitspotc)
-
-#    for r in spots:
-#        print("splitlist:",r)
         
     return spots
 
@@ -475,23 +446,24 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
         # print(row)
         if re.match('(^0|^Q).[0-9].*', row[1]):
             #         print(', '.join(row))
-            if re.match('10\..*', row[2]) or re.match('14\..*', row[2]):
-                spots_tele.append(row)
+            #if re.match('10\..*', row[2]) or re.match('14\..*', row[2]):
+            spots_tele.append(row)
 
     # 2018-05-03 13:06:00, QA5IQA, 7.040161, -8, JO53, 27, DH5RAE, JN68qv, 537
     # 0                    1       2         3   4     5   6       7       8 
 
     for b in balloons:
         if len(spots) == 0:
-            print("out of spots in balloonloop. returning")
+            logging.info("out of spots in balloonloop. returning")
             return spots
             
         balloon_name = b[0]
         balloon_call = b[1]
         balloon_mhz = b[2]
         balloon_channel = b[3]
+        balloon_timeslot = b[4]
 
-        print("%s Name: %-6s Call: %6s MHz: %2d Channel: %2d " % (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), balloon_name, balloon_call, balloon_mhz, balloon_channel), end='')
+        logging.info("Name: %-8s Call: %6s MHz: %2d Channel: %2d Slot: %d" % (balloon_name, balloon_call, balloon_mhz, balloon_channel, balloon_timeslot))
 
         # Filter out telemetry for active channel
         if balloon_channel < 10:
@@ -499,81 +471,76 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
         else:
             telem = [element for element in spots_tele if re.match('^Q.'+str(balloon_channel-10), element[1])]
 
+        # Filter out only selected band
+        telem = [element for element in telem if re.match(str(balloon_mhz)+'\..*', element[2])]
 
-        print("Spots:", len(spots),"Telemetry:", len(telem))
-#        if len(telem) > 0:
-#            print("time at top-tele spot", telem[0])
-#        time.sleep(2)
+        # If timeslot is used. filter out correct slot
+        if balloon_timeslot > 0:
+            telem = [element for element in telem if balloon_timeslot == int(element[0].minute % 10 / 2)]
+                                
+        #if len(telem) > 0:
+            # logging.info("time at top-tele spot: %s", str(telem[0]))
 
         # Loop through all spots and try to find matching telemetrypacket
         spot_last = spots[0]
-        spot_oldtime = datetime.datetime(1970, 1, 1, 1, 1) 
+        spot_oldtime = datetime.datetime(1970, 1, 1, 1, 1)
+        bspots = []
         for row in spots:
+            if balloon_call == row[1]:
+                bspots.append(row)
+                
+        logging.info("Spots: %d  Telemetry: %d", len(bspots), len(telem))
+        for row in bspots:
+            # logging.info("B: %s",row)
             spot_call = row[1]
-
+            
             if balloon_call == spot_call:
-#                print(row)
                 spot_time = row[0]
-    #            if posdata_cmp(row,spot_last):
-    #                print("Same payload")
-    #                sys.exit(0)
-    #            tdiff = spot_time
 
-    #                if  < timedelta(minutes=3) and tdiff > timedelta(minutes=0):
-
-                # Check if current spot is "much" older than latest telemetrypacket. If so, delete.
-#                if len(telem) > 0:
-    #                print("time at top-tele spot", telem[0][0], row, telem[0], telem[0][0]-spot_time)
-#                    if (telem[0][0] - spot_time) > timedelta(minutes=10):
-#                        print("very big timediff detected", len(spots),len(spots_tele))
-#                        spots.remove(row)
-#                        time.sleep(0.1)
-
-                 # Only check new uniq times
+                # Only check new uniq times
                 if spot_time != spot_oldtime:
+
+                    # [datetime.datetime(2019, 8, 1, 0, 22), 'YO3ICT', '14.097148', -23, -1, 'BM73', 10, 'ND7M', 'DM16', 2564]
+                    pstr = "Call: %s Time: %s Fq: %s Loc: %s Power: %s Reporter: %s" %  (row[1], row[0], row[2], row[5], row[6], row[7])
+                    logging.info(pstr)
                     spot_oldtime = spot_time
-                    spot_fq = row[2]        
-                    spot_loc = row[4]
-                    spot_power = row[5]
+                    spot_fq = row[2]
+                    spot_power = row[4]
+                    spot_loc = row[5]
                     spot_reporter = row[6]        
                     spot_reporter_loc = row[7]
-                    print(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "call", spot_call,"time",spot_time,"fq",spot_fq,"loc", spot_loc,"power",spot_power,"reporter",spot_reporter)
-
+                    
                 # Match positioningpacket with telemetrypackets
                     b_telem = []
                     for trow in telem:
-
-#                        print("tdiff:",trow, spot_time)
+                        # print("tdiff:",trow, spot_time, type(spot_time))
                         tdiff = trow[0] - spot_time
-    #                    print(tdiff)
+                        #                    print(tdiff)
 
-                        if tdiff > timedelta(minutes=10):
-                            print("too long interval, breaking", tdiff,trow)
+                        if tdiff > timedelta(minutes=8):
+                            logging.info("Too long interval, breaking %s", str(tdiff))
                             break
                         if tdiff > timedelta(minutes=0):
                             b_telem.append(trow)
 
-    #                    time.sleep(0.1)    
                     # If suitable telemetry found, enter decoding!
                     if len(b_telem) > 0:
-#                        print("Found suitable telemetry rows: ",len(b_telem))
-    #                    print(b_telem[0])
-    #                    for r in b_telem:
-    #                        print("tele:", r, r[0]-spot_time)
+                        logging.info("Found suitable telemetry rows: %d",len(b_telem))
 
-                        print("call", spot_call,"time",spot_time,"fq",spot_fq,"loc", spot_loc,"power",spot_power,"reporter",spot_reporter)
+                        # print("call", spot_call,"time",spot_time,"fq",spot_fq,"loc", spot_loc,"power",spot_power,"reporter",spot_reporter)
+                        #logging.info(pstr)
+                        #logging.info("T: %s", b_telem[0])
                         telemetry = decode_telemetry(row, b_telem[0])
                         if len(telemetry) > 0:
-                            #                            # Delete spot and telemetryspot
-                            #                            if row in spots:
-
+                            # Delete spot and telemetryspot
                             try:
                                 spots.remove(row)
                             except ValueError:
                                 pass
 
                             for rt in b_telem:
-                                print("Removing:", rt)
+                                pstr = "%s Time: %s Fq: %s Loc: %s Power: %s Reporter: %s" %  (rt[1], rt[0], rt[2], rt[5], rt[6], rt[7]) 
+                                logging.info("Removing: %s", pstr)
                                 try:
                                     spots.remove(rt)
                                 except ValueError:
@@ -585,17 +552,14 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
                                     pass
 
                                 try:
-                                    b_telem.remove(rt)
+                                    telem.remove(rt)
                                 except ValueError:
                                     pass
 
-
-    #                        print("Telemetry ok!")
-    #                        print(telemetry)
+                            # logging.info(telemetry)
 
                             # seqnr = int(((int(telemetry['time'].strftime('%s'))) / 120) % 100000)
                             seqnr = int(telemetry['time'].strftime('%s'))
-#                            print(seqnr)
 
                             # telemetry = [ spot_pos_time, spot_pos_call, lat, lon, loc, alt, temp, batt, speed, gps, sats ]
                             telestr = "%s,%d,%s,%.5f,%.5f,%d,%d,%.2f,%.2f,%d,%d" % (  
@@ -609,11 +573,11 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
                                 checksum = checksum ^ ord(telestr[i])
                                 i+=1
                             telestr = "$$" + telestr + "*" + '{:x}'.format(int(checksum))
-    #                        print(telestr)
+                            logging.info("Telemetry: %s", telestr)
 
                             # Check if string has been uploaded before and if not then add and upload
                             if not checkifsentdb(telestr):
-#                                 print("Unsent spot", telestr)
+                                # print("Unsent spot", telestr)
 
                                 if push_habhub:
                                     # Send telemetry to habhub
@@ -627,7 +591,7 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
                                     sonde_data["lat"] = telemetry['lat']
                                     sonde_data["lon"] = telemetry['lon']
                                     sonde_data["alt"] = telemetry['alt']
-                                    print("Pushing data to aprs.fi")
+                                    logging.info("Pushing data to aprs.fi")
                                     push_balloon_to_aprs(sonde_data)
 
 
@@ -635,35 +599,10 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
                                 addsentdb(balloon_name, row[0], telestr)
 
                             else:
-                                print("Already sent spot. Doing nothing")
+                                logging.info("Already sent spot. Doing nothing")
 
     return spots
 
-
-
-# balloons = readballoonsdb()
-# spots = readgz(balloons, "wsprspots-2018-06.csv.gz")
-# spots.sort(reverse=True)
-#spots = readgz(balloons, "wsprspots-2018-05.csv.gz")
-# sys.exit(0)
-#dumpcsv(spots)
-# sys.exit(0)
-
-# spots.sort(reverse=True)
-
-# spots = readcsv()
-
-# spots = spots + readnewspotsdb()
-
-# Trim of spots older than x days
-# spots = timetrim(spots, 2)
-
-
-
-#while True:
-#    process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_apr)s
-
-#    print("Outer loop")
 
 
         

@@ -1,6 +1,7 @@
 
 # from datetime import datetime,timedelta
 import datetime
+import logging
 import sqlite3
 import csv
 import sys
@@ -22,9 +23,9 @@ def balloonstodb(balloons):
             if not data:
                 con.commit()
         except sqlite3.Error as e:
-            print("Database error: %s" % e)
+                logging.info("Database error: %s",e)
         except Exception as e:
-            print("Exception in _query: %s" % e)
+                logging.info("Exception in _query:", e)
         finally:
             if con:
                 con.close()
@@ -60,6 +61,7 @@ def readballoonsdb():
 
 # Dumps all spots to csv-file
 def dumpcsv(spotlist):
+    logging.info("Writing spots to csv-file")
     with open('spots.csv', 'a', newline='') as csvfile:
         spotswriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
@@ -68,9 +70,10 @@ def dumpcsv(spotlist):
             spotswriter.writerow(row)
 
         csvfile.close()
+    return
 
 
-
+# Org-csv
 #  Date Call Frequency SNR Drift Grid dBm W reporter locator dist-km dist-mi 
 # 2018-05-21 19:04,F6HCO,10.140216,-11,1,J19bg,+33,1.995,SM0EPX/RX2,JO89si,1495,929
 
@@ -80,29 +83,33 @@ def dumpcsv(spotlist):
 # 2018-06-14 09:08,QA5IQB,5.288761,-26,0,JO22,+20,DL0HT,JO43jb,266
 # 0                1      2         3  4 5    6   7     8      9
 
+# Local-csv
+# 2018-05-01 02:14,QA5IQA,3.594159,-28,JO53,27,DC5AL-R,JO31lk,353
+# 2018-05-01 02:14,QA5IQA,3.594153,-21,JO53,27,DF2JP,JO31hh,380
+
+#  timestamp, tx_call, freq real, snr integer, drift integer, tx_loc, power , rx_call, rx_loc, distance
 
 def readcsv():
-    spots = []
-    with open('spots.csv', newline='') as csvfile:
-	    spotsreader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        spots = []
+        with open('spots.csv', newline='') as csvfile:
+                spotsreader = csv.reader(csvfile, delimiter=',', quotechar='|')
 
-	    for row in spotsreader:
+                for row in spotsreader:
+                        # Time
+                        row[0] = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M')
+                        row[3] = int(row[3])
+                        row[4] = int(row[4])
+                        
+                        # Strip "+" from dB
+                        row[6] = int(row[6].replace('+',''))
+                        row[9] = int(row[9])
+                        
+                        # print(row)
+                        spots.append(row)
 
+        csvfile.close()
+        logging.info("Loaded spots: %s", len(spots))
+        #print("First",spots[1:][0])
+        #print("Last",spots[-1:][0])
 
-		    row[0] = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M')
-		    row[3] = int(row[3])
-		    row[4] = int(row[4])
-		    # Strip "+" from dB
-		    row[6] = int(row[6].replace('+',''))
-		    row[9] = int(row[9])
-
-#		    print(row)
-		    spots.append(row)
-
-    csvfile.close()
-#       print(spotsreader)
-    print("Loaded spots:", len(spots))
-    print("First",spots[1:][0])
-    print("Last",spots[-1:][0])
-
-    return spots
+        return spots
