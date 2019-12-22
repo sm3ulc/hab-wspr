@@ -41,3 +41,29 @@ The scripts work with a database in sqlite. It can be used to do all kinds of ou
 
     sqlite3 wsprdb.db 'select * from sentspots order by time_sent desc limit 30'
 
+# Testing
+
+Adjust your balloon.ini
+
+Goto http://wsprnet.org/drupal/downloads or
+
+
+     wget http://wsprnet.org/archive/wsprspots-2019-12.csv.gz
+
+Extract data from archive and save filtered spots to spots.csv and then process. 
+
+      python3 webscrape.py --archive wsprspots-2019-12.csv.gz  --conf test.ini	 
+
+
+Read csv-file from spots.csv and process. 
+
+<pre>python3 webscrape.py
+
+--csv spots.csv
+
+</pre>
+
+
+
+
+
