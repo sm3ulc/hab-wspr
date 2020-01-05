@@ -297,7 +297,7 @@ while 1==1:
 
         if old == 0:
             # logging.info("New",str(row))
-            logging.info("New spot: %s"<,row)
+            logging.info("New spot: %s",row)
             
             # Insert in beginning for cache
             spotcache.insert(0, row)
