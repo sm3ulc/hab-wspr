@@ -101,11 +101,7 @@ def balloonfilter(spots,balloons):
                     filtered.append(row)
 
         if re.match('(^0|^Q).[0-9].*', row[1]):
-            
-            # Coarse bogus filter - just save 30m and 20m
-            if re.match('10\..*', row[2]) or re.match('14\..*', row[2]):
-                #               print("Found", row)
-                filtered.append(row)
+            filtered.append(row)
 
 #    for r in filtered:
 #        logging.info("filtered out",r)
@@ -146,7 +142,7 @@ verbose = False
 archive_file = ''
 csv_file = ''
 conf_file = 'balloon.ini'
-dry_run = True
+dry_run = False
 
 print("ARGV      :", sys.argv[1:])
 
@@ -160,7 +156,7 @@ try:
                 ])
 
 except getopt.GetoptError as err:
-    print('ERROR:', erxr)
+    print('ERROR:', err)
     sys.exit(1)
 
 
@@ -182,7 +178,7 @@ config = configparser.ConfigParser()
 config.read(conf_file)
 push_habhub = config['main']['push_habhub']
 push_aprs = config['main']['push_aprs']
-# balloons = config['main']['balloons']
+
 
 balloons = json.loads(config.get('main','balloons'))
             
@@ -191,8 +187,9 @@ for b in balloons:
       logging.info("%s", str(b))
 
 if dry_run:
-      push_habhub = False
-      push_aprs = False
+    logging.info("Dru run. No uploads")
+    push_habhub = False
+    push_aprs = False
       
 spots = []
 
