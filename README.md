@@ -26,7 +26,7 @@ git clone https://github.com/sm3ulc/hab-wspr
 The package requires some extra modules that need to be installed via pip or similar
 
 <pre>
-apt install python-httplib2 python-requests python3-bs4
+apt install python3-httplib2 python3-requests python3-bs4
 </pre>
 
 
