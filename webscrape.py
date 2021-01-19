@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 from bs4 import BeautifulSoup  
 import configparser
@@ -30,7 +30,7 @@ def getspots (nrspots):
 
     data = []
     table = soup.find_all('table')[2]
-    # print("TABLE:",table)
+    #print("TABLE:",table)
 
     rows = table.findAll('tr')
     for row in rows:
@@ -43,9 +43,11 @@ def getspots (nrspots):
 
     # Strip redundant columns Watt & miles and translate/filter data
     for row in newspots:
+        #print(row)
         row[0] = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M')
         row[6] = int(row[6].replace('+',''))
 
+        del row[12]
         del row[11]
         del row[7]
 
@@ -144,7 +146,7 @@ csv_file = ''
 conf_file = 'balloon.ini'
 dry_run = False
 
-print("ARGV      :", sys.argv[1:])
+#print("ARGV      :", sys.argv[1:])
 
 try:
       options, remainder = getopt.getopt(
@@ -160,7 +162,7 @@ except getopt.GetoptError as err:
     sys.exit(1)
 
 
-logging.info("OPTIONS   : %s", str(options))
+#logging.info("OPTIONS   : %s", str(options))
       
 for opt, arg in options:
     if opt in ('--archive'):
@@ -324,7 +326,7 @@ while 1==1:
     if len(spots) > 1:
         logging.info("pre-tele: %d",len(spots))
         spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs)
-        print("pro-tele:",len(spots))
+        logging.info("pro-tele: %s", str(len(spots)))
 
     if new_max < len(newspots):
 #  and len(newspots) != nrspots_pull:
@@ -334,12 +336,15 @@ while 1==1:
         logging.info("Hit max spots. Increasing set to fetch")
         nrspots_pull += 100
 
-#    print("%s Spots: %6d New: %5d (max: %5d) Nrspots: %5d Looptime: %s Checks: %8d Hitrate: %5.2f%%" % 
-#          (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), len(spotcache), len(newspots), new_max, nrspots_pull, str(datetime.datetime.now() - tnow).split(":")[2], src_cc, 100-(src_cc / (len(spotcache)*nrspots_pull))*100))
+    #    print("%s Spots: %6d New: %5d (max: %5d) Nrspots: %5d Looptime: %s Checks: %8d Hitrate: %5.2f%%" % 
+       #          (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), len(spotcache), len(newspots), new_max, nrspots_pull, str(datetime.datetime.now() - tnow).split(":")[2], src_cc, 100-(src_cc / (len(spotcache)*nrspots_pull))*100))
 
-    print("%s Spots: %5d Cache: %6d New: %5d (max: %5d) Nrspots: %5d Looptime: %s Checks: %8d" % 
-          (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), len(spots), len(spotcache), len(newspots), new_max, nrspots_pull, str(datetime.datetime.now() - tnow).split(":")[2], src_cc)) 
-
+    #    print("%s Spots: %5d Cache: %6d New: %5d (max: %5d) Nrspots: %5d Looptime: %s Checks: %8d" % 
+    #      (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), len(spots), len(spotcache), len(newspots), new_max, nrspots_pull, str(datetime.datetime.now() - tnow).split(":")[2], src_cc))
+    printstr = ("Spots: %5d Cache: %6d New: %5d (max: %5d) Nrspots: %5d Looptime: %s Checks: %8d" % 
+          (len(spots), len(spotcache), len(newspots), new_max, nrspots_pull, str(datetime.datetime.now() - tnow).split(":")[2], src_cc)) 
+    logging.info(printstr)
+    
     spotcache = spotcache[:cache_max]
 
     sleeping = sleeptime - int(datetime.datetime.now().strftime('%s')) % sleeptime
