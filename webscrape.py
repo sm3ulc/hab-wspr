@@ -102,7 +102,7 @@ def balloonfilter(spots,balloons):
                     row[5] = row[5][0:4]
                     filtered.append(row)
 
-        if re.match('(^0|^Q).[0-9].*', row[1]):
+        if re.match('(^0|^1|^Q).[0-9].*', row[1]):
             filtered.append(row)
 
 #    for r in filtered:
@@ -178,9 +178,9 @@ for opt, arg in options:
 
 config = configparser.ConfigParser()
 config.read(conf_file)
-push_habhub = config['main']['push_habhub']
-push_aprs = config['main']['push_aprs']
-
+push_habhub = config['main'].getboolean('push_habhub')
+push_aprs = config['main'].getboolean('push_aprs')
+push_html = config['main'].getboolean('push_html')
 
 balloons = json.loads(config.get('main','balloons'))
             
@@ -254,7 +254,7 @@ if csv_file:
       sys.exit(0)
             
 # Spots to pullfrom wsprnet
-nrspots_pull= 2000
+nrspots_pull= 3000
 spotcache = []
 
 logging.info("Preloading cache from wsprnet...")
@@ -322,10 +322,9 @@ while 1==1:
     # Filter out all spots newer that x minutes
     spots = timetrim(spots,60)
 
-
     if len(spots) > 1:
         logging.info("pre-tele: %d",len(spots))
-        spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs)
+        spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs, push_html)
         logging.info("pro-tele: %s", str(len(spots)))
 
     if new_max < len(newspots):
@@ -336,11 +335,6 @@ while 1==1:
         logging.info("Hit max spots. Increasing set to fetch")
         nrspots_pull += 100
 
-    #    print("%s Spots: %6d New: %5d (max: %5d) Nrspots: %5d Looptime: %s Checks: %8d Hitrate: %5.2f%%" % 
-       #          (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), len(spotcache), len(newspots), new_max, nrspots_pull, str(datetime.datetime.now() - tnow).split(":")[2], src_cc, 100-(src_cc / (len(spotcache)*nrspots_pull))*100))
-
-    #    print("%s Spots: %5d Cache: %6d New: %5d (max: %5d) Nrspots: %5d Looptime: %s Checks: %8d" % 
-    #      (datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), len(spots), len(spotcache), len(newspots), new_max, nrspots_pull, str(datetime.datetime.now() - tnow).split(":")[2], src_cc))
     printstr = ("Spots: %5d Cache: %6d New: %5d (max: %5d) Nrspots: %5d Looptime: %s Checks: %8d" % 
           (len(spots), len(spotcache), len(newspots), new_max, nrspots_pull, str(datetime.datetime.now() - tnow).split(":")[2], src_cc)) 
     logging.info(printstr)

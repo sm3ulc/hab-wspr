@@ -1,4 +1,4 @@
-#!/usr/bin/python3.6
+#!/usr/bin/env python3
 
 from base64 import b64encode
 import configparser
@@ -22,6 +22,7 @@ import maidenhead
 
 from balloon import *
 from sonde_to_aprs import * 
+from sonde_to_html import *
 
 # Power to decixmal conversion table 
 pow2dec = {0:0,3:1,7:2,10:3,13:4,17:5,20:6,23:7,27:8,30:9,33:10,37:11,40:12,43:13,47:14,50:15,53:16,57:17,60:18}
@@ -140,7 +141,7 @@ def readgz(balloons, gzfile):
                         # print("Found", c, row)
                         spots.append(row)
 
-            if re.match('(^0|^Q).[0-9].*', row[1]):
+            if re.match('(^0|^1|^Q).[0-9].*', row[1]):
                 row[0] = datetime.datetime.fromtimestamp(int(row[0]))
                 
                 row[3] = int(row[3])
@@ -398,11 +399,11 @@ def send_tlm_to_habitat(sentence, callsign, spot_time):
         body=json.dumps(data),
     )
 
-    print(resp['status'])
+    # print(resp['status'])
     if resp['status'] == '201':
-        print("OK 201", input)
+        logging.info("OK 201")
     elif resp['status'] == '403':
-        print("Error 403 - already uploaded")
+        logging.info("Error 403 - already uploaded")
 
     return
 
@@ -436,13 +437,13 @@ def timetrim(spots, m):
 #
 # Main function - filter, process and upload of telemetry
 #
-def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
+def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs, push_html):
 
     # Filter out telemetry-packets
     spots_tele = []
     for row in spots:
         # print(row)
-        if re.match('(^0|^Q).[0-9].*', row[1]):
+        if re.match('(^0|^1|^Q).[0-9].*', row[1]):
             #         print(', '.join(row))
             #if re.match('10\..*', row[2]) or re.match('14\..*', row[2]):
             spots_tele.append(row)
@@ -460,7 +461,10 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
         balloon_mhz = b[2]
         balloon_channel = b[3]
         balloon_timeslot = b[4]
-
+        balloon_html_push = b[6]
+        balloon_ssid = b[7]
+        balloon_aprs_comment = b[8]
+        
         logging.info("Name: %-8s Call: %6s MHz: %2d Channel: %2d Slot: %d" % (balloon_name, balloon_call, balloon_mhz, balloon_channel, balloon_timeslot))
 
         # Filter out telemetry for active channel
@@ -581,7 +585,6 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
                                 # push_habhub = True
                                 if push_habhub:
                                     # Send telemetry to habhub
-                                    #                                send_tlm_to_habitat2(telestr, habhub_callsign)                            
                                     send_tlm_to_habitat(telestr, habhub_callsign, spot_time)
                                 else:
                                     logging.info("Not pushing to habhub")
@@ -589,15 +592,25 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
                                 if push_aprs:
                                     # Prep and push basic data to aprs.fi
                                     sonde_data = {}
-                                    sonde_data["id"] = spot_call + "-12"
+                                    sonde_data["id"] = spot_call + "-" + balloon_ssid
                                     sonde_data["lat"] = telemetry['lat']
                                     sonde_data["lon"] = telemetry['lon']
                                     sonde_data["alt"] = telemetry['alt']
+                                    sonde_data["speed"] = telemetry['speed']
+                                    sonde_data["temp"] = telemetry['temp']
+                                    sonde_data["batt"] = telemetry['batt']
+                                    sonde_data["comment"] = balloon_aprs_comment
                                     logging.info("Pushing data to aprs.fi")
                                     push_balloon_to_aprs(sonde_data)
                                 else:
                                     logging.info("Not pushing to aprs.fi")
 
+                                if push_html and balloon_html_push:                                    
+                                    # Push basic data to ftp html
+                                    logging.info('\033[33m' + "Pushing data to html page" + '\033[0m')
+                                    push_balloon_to_html(telemetry)			 
+
+                                    
                                 # Add sent string to history-db
                                 addsentdb(balloon_name, row[0], telestr)
 
