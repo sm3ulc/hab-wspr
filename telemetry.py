@@ -376,7 +376,6 @@ def send_tlm_to_habitat(sentence, callsign, spot_time):
     date_created = spot_time.isoformat("T") + "Z" 
     date = datetime.datetime.utcnow().isoformat("T") + "Z"
 
-
     data = {
         "type": "payload_telemetry",
         "data": {
@@ -389,7 +388,6 @@ def send_tlm_to_habitat(sentence, callsign, spot_time):
                 },
             },
         }
-
 
     h = httplib2.Http("")
 
@@ -579,10 +577,14 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
                             if not checkifsentdb(telestr):
                                 # print("Unsent spot", telestr)
 
+                                print(push_habhub)
+                                # push_habhub = True
                                 if push_habhub:
                                     # Send telemetry to habhub
                                     #                                send_tlm_to_habitat2(telestr, habhub_callsign)                            
-                                    send_tlm_to_habitat(telestr, habhub_callsign, spot_time)                            
+                                    send_tlm_to_habitat(telestr, habhub_callsign, spot_time)
+                                else:
+                                    logging.info("Not pushing to habhub")
 
                                 if push_aprs:
                                     # Prep and push basic data to aprs.fi
@@ -593,7 +595,8 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs):
                                     sonde_data["alt"] = telemetry['alt']
                                     logging.info("Pushing data to aprs.fi")
                                     push_balloon_to_aprs(sonde_data)
-
+                                else:
+                                    logging.info("Not pushing to aprs.fi")
 
                                 # Add sent string to history-db
                                 addsentdb(balloon_name, row[0], telestr)
