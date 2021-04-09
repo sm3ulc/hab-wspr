@@ -574,7 +574,7 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs, 
                             while i < len(telestr):
                                 checksum = checksum ^ ord(telestr[i])
                                 i+=1
-                            telestr = "$$" + telestr + "*" + '{:x}'.format(int(checksum))
+                            telestr = "$$" + telestr + "*" + '{:02x}'.format(int(checksum))
                             logging.info("Telemetry: %s", telestr)
 
                             # Check if string has been uploaded before and if not then add and upload
