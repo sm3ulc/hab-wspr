@@ -228,7 +228,7 @@ if csv_file:
       sys.exit(0)
             
 # Spots to pullfrom wsprnet
-nrspots_pull= 3000
+nrspots_pull= 2000
 spotcache = []
 
 logging.info("Preloading cache from WsprDaemon...")
@@ -241,7 +241,7 @@ spots = spotcache
 cache_max = 10000
 new_max = 0
 only_balloon=False
-sleeptime = 60
+sleeptime = 75
 
 logging.info("Entering pollingloop.")
 while 1==1:
@@ -275,6 +275,7 @@ while 1==1:
             # Insert in beginning for cache
             spotcache.insert(0, row)
 
+
  #           for w in spotcache:
  #               print("cache2:", w)
 
@@ -294,7 +295,7 @@ while 1==1:
     spots.sort(reverse=False)   
     spots = deduplicate(spots) # needs sorted list
     # Filter out all spots newer that x minutes
-    spots = timetrim(spots,60)
+    spots = timetrim(spots,7)
 
     if len(spots) > 1:
         logging.info("pre-tele: %d",len(spots))
@@ -315,7 +316,7 @@ while 1==1:
     
     spotcache = spotcache[:cache_max]
 
-    sleeping = sleeptime - int(datetime.datetime.now().strftime('%s')) % sleeptime
+    sleeping = sleeptime - time.time() % sleeptime
 #     logging.info("Sleep:", sleeping)
     time.sleep(sleeping)
 
