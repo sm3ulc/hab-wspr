@@ -456,15 +456,19 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs, 
             logging.info("out of spots in balloonloop. returning")
             return spots
             
-        balloon_name = b[0]
-        balloon_call = b[1]
-        balloon_mhz = b[2]
-        balloon_channel = b[3]
-        balloon_timeslot = b[4]
-        balloon_html_push = b[6]
-        balloon_ssid = b[7]
-        balloon_aprs_comment = b[8]
-        
+        try:
+            balloon_name = b[0]
+            balloon_call = b[1]
+            balloon_mhz = b[2]
+            balloon_channel = b[3]
+            balloon_timeslot = b[4]
+            balloon_html_push = b[6]
+            balloon_ssid = b[7]
+            balloon_aprs_comment = b[8]
+        except IndexError as i:
+            logging.error('Unable to parse balloon!')
+            print(b)
+
         logging.info("Name: %-8s Call: %6s MHz: %2d Channel: %2d Slot: %d" % (balloon_name, balloon_call, balloon_mhz, balloon_channel, balloon_timeslot))
 
         # Filter out telemetry for active channel
@@ -474,7 +478,7 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs, 
             telem = [element for element in spots_tele if re.match('^Q.'+str(balloon_channel-10), element[1])]
 
         # Filter out only selected band
-        telem = [element for element in telem if re.match(str(balloon_mhz)+'\..*', element[2])]
+        telem = [element for element in telem if re.match(str(balloon_mhz)+'\..*', str(element[2]))]
 
         # If timeslot is used. filter out correct slot
         if balloon_timeslot > 0:
