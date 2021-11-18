@@ -360,7 +360,7 @@ def send_tlm_to_habitat2(sentence, callsign):
     result = call(["python2","./send_tlm_to_habitat.py", sentence,"sm0ulc"])
     return
 
-def send_tlm_to_habitat(sentence, callsign, spot_time):
+def send_tlm_to_habitat(sentence, callsign, spot_time, dry_run):
     input=sentence
 
     logging.info("Pushing data to habhub")
@@ -392,12 +392,15 @@ def send_tlm_to_habitat(sentence, callsign, spot_time):
 
     h = httplib2.Http("")
 
-    resp, content = h.request(
-        uri="http://habitat.habhub.org:/habitat/_design/payload_telemetry/_update/add_listener/%s" % hashlib.sha256(sentence2).hexdigest(),
-        method='PUT',
-        headers={'Content-Type': 'application/json; charset=UTF-8'},
-        body=json.dumps(data),
-    )
+    logging.info(data)
+
+    if not dry_run:
+        resp, content = h.request(
+            uri="http://habitat.habhub.org:/habitat/_design/payload_telemetry/_update/add_listener/%s" % hashlib.sha256(sentence2).hexdigest(),
+            method='PUT',
+            headers={'Content-Type': 'application/json; charset=UTF-8'},
+            body=json.dumps(data),
+        )
 
     # print(resp['status'])
     if resp['status'] == '201':
@@ -437,7 +440,7 @@ def timetrim(spots, m):
 #
 # Main function - filter, process and upload of telemetry
 #
-def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs, push_html):
+def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs, push_html, dry_run):
 
     # Filter out telemetry-packets
     spots_tele = []
@@ -589,7 +592,7 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs, 
                                 # push_habhub = True
                                 if push_habhub:
                                     # Send telemetry to habhub
-                                    send_tlm_to_habitat(telestr, habhub_callsign, spot_time)
+                                    send_tlm_to_habitat(telestr, habhub_callsign, spot_time, dry_run)
                                 else:
                                     logging.info("Not pushing to habhub")
 
@@ -605,7 +608,7 @@ def process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs, 
                                     sonde_data["batt"] = telemetry['batt']
                                     sonde_data["comment"] = balloon_aprs_comment
                                     logging.info("Pushing data to aprs.fi")
-                                    push_balloon_to_aprs(sonde_data)
+                                    push_balloon_to_aprs(sonde_data, dry_run)
                                 else:
                                     logging.info("Not pushing to aprs.fi")
 
