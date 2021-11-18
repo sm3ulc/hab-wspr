@@ -50,6 +50,10 @@ Edit balloon.ini and add aprs-is user etc. Add balloons on the format:
 
 **aprs-wspr-call** = call to use for aprs data
 
+**band in mhz** - band to use, i.e 20m band is 14 Mhz
+
+**channel** - channelnumber 0 to 15
+
 **timeslot** - 0 to disable use of timeslots. 1-5, use correspondent slot 00, 02, 04 etc.
 
 **datetime** - starttime in isoformat to calculate duration
