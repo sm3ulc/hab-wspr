@@ -49,7 +49,7 @@ def get_sonde():
         return sonde_data
 
 # Push a Radiosonde data packet to APRS as an object.
-def push_balloon_to_aprs(sonde_data):
+def push_balloon_to_aprs(sonde_data, dry_run = False):
         # Pad or limit the sonde ID to 9 characters.
         object_name = sonde_data["id"]
         if len(object_name) > 9:
@@ -98,16 +98,19 @@ def push_balloon_to_aprs(sonde_data):
         out_str = ";%s*111111z%s/%sO000/%03d/A=%06dTemp=%sC Solar=%sV %s" % (object_name,lat_str,lon_str,speed,alt,temp,batt,object_comment)
         logging.info('\033[33m' + "APRS: %s" + '\033[0m' , out_str)
 
+        
 	# Connect to an APRS-IS server, login, then push our object position in.	
 	# create socket & connect to server
-        sSock = socket(AF_INET, SOCK_STREAM)
-        sSock.connect((serverHost, serverPort))
-	# logon
-        sSock.send(b'user %s pass %s vers VK5QI-Python 0.01\n' % (aprsUser.encode('utf-8'), aprsPass.encode('utf-8')) )
-	# send packet
-        sSock.send(b'%s>APRS:%s\n' % (callsign.encode('utf-8'), out_str.encode('utf-8')) )
+        if not dry_run:
+                sSock = socket(AF_INET, SOCK_STREAM)
+                sSock.connect((serverHost, serverPort))
+                # logon
+                sSock.send(b'user %s pass %s vers VK5QI-Python 0.01\n' % (aprsUser.encode('utf-8'), aprsPass.encode('utf-8')) )
+                # send packet
+                sSock.send(b'%s>APRS:%s\n' % (callsign.encode('utf-8'), out_str.encode('utf-8')) )
 
-	# close socket
-        sSock.shutdown(0)
-        sSock.close()
-
+                # close socket
+                sSock.shutdown(0)
+                sSock.close()
+        else:
+                logging.info("Did not push data to APRS")

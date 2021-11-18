@@ -129,6 +129,7 @@ try:
                 ['archive=',
                  'csv=',
                  'conf=',
+                 'dry_run'
                 ])
 
 except getopt.GetoptError as err:
@@ -163,9 +164,7 @@ for b in balloons:
       logging.info("%s", str(b))
 
 if dry_run:
-    logging.info("Dru run. No uploads")
-    push_habhub = False
-    push_aprs = False
+    logging.info("Dry run. No uploads")
       
 spots = []
 
@@ -192,7 +191,7 @@ if archive_file:
 
       if len(spots) > 1:
             logging.info("Spots: %s", str(len(spots)))
-            spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs)
+            spots = process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs, push_html, dry_run)
       else:
             logging.info("No spots!")
             
@@ -220,7 +219,7 @@ if csv_file:
       
       if len(spots) > 1:
             logging.info("Spots: %s", str(len(spots)))
-            spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs)
+            spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs, push_html, dry_run)
       else:
             logging.info("No spots!")
 
@@ -299,7 +298,7 @@ while 1==1:
 
     if len(spots) > 1:
         logging.info("pre-tele: %d",len(spots))
-        spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs, push_html)
+        spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs, push_html, dry_run)
         logging.info("pro-tele: %s", str(len(spots)))
 
     if new_max < len(newspots):
