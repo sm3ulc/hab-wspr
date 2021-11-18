@@ -46,19 +46,19 @@ Edit balloon.ini and add aprs-is user etc. Add balloons on the format:
 </pre>
 
 
-habhub name = fancy name to use on habhub
+**habhub name** = fancy name to use on habhub
 
-aprs-wspr-call = call to use for aprs data
+**aprs-wspr-call** = call to use for aprs data
 
-timeslot = 0 to disable use of timeslots. 1-5, use correspondent slot 00, 02, 04 etc.
+**timeslot** - 0 to disable use of timeslots. 1-5, use correspondent slot 00, 02, 04 etc.
 
-datetime = starttime in isoformat to calculate duration
+**datetime** - starttime in isoformat to calculate duration
 
-html_push = 1 to push html page , ONLY for one balloon
+**html_push** 1 to push html page otherwise 0, ONLY for one balloon
 
-aprs-ssid = the ssid to use with aprs-call
+**aprs-ssid** - the ssid to use with aprs-call
 
-aprs_comment = comment to use for comment in aprs-packet
+**aprs_comment** - comment to use for comment in aprs-packet
 
 
 To run on linux: (with default config file balloon.ini)
