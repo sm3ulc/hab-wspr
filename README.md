@@ -2,7 +2,7 @@
 
 ## High altittude ballon tracking via WSPR
 
-The software webscrapes data from wsprnet.org, filter out calls from the balloons and decode additional telemetry. Currently the script supports upload to:
+The software fetches data from WsprDaemon TimescaleDB, filters out calls from the balloons and decodes additional telemetry. Currently the script supports upload to:
 
 * habhub tracker ( https://tracker.habhub.org/ )
 * aprs-fi ( https://aprs.fi ).
@@ -26,15 +26,9 @@ git clone https://github.com/sm3ulc/hab-wspr
 The package requires some extra modules that need to be installed via pip or similar
 
 <pre>
-apt install python3-httplib2 python3-requests python3-bs4
-</pre>
-
-
-For windows users install anaconda with python 3.
-
-<pre>
-pip install httplib2
-pip install bs4
+python3 -m venv venv/
+source venv/bin/activate
+pip install -r requirements.txt
 </pre>
 
 # Configuration
@@ -68,7 +62,7 @@ Edit balloon.ini and add aprs-is user etc. Add balloons on the format:
 To run on linux: (with default config file balloon.ini)
 
 <pre>
-python3 webscrape.py
+python3 run.py
 </pre>
 
 
@@ -91,13 +85,13 @@ wget http://wsprnet.org/archive/wsprspots-2019-12.csv.gz
 Extract data from archive and append filtered spots to spots.csv in and then process. 
 
 <pre>
-python3 webscrape.py --archive wsprspots-2019-12.csv.gz  --conf test.ini	 
+python3 run.py --archive wsprspots-2019-12.csv.gz  --conf test.ini
 </pre>
 
 Read csv-file from spots.csv and process. 
 
 <pre>
-python3 webscrape.py --csv spots.csv
+python3 run.py --csv spots.csv
 </pre>
 
 

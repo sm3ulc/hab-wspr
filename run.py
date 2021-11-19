@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from bs4 import BeautifulSoup  
 import configparser
 import csv
 import datetime
@@ -10,52 +9,27 @@ import requests
 import sqlite3
 import sys
 import time
+import psycopg2
 
 from balloon import *
 from telemetry import *
 
+def to_list(tuple):
+    return list(tuple)
+
 def getspots (nrspots):
-#    logging.info("Fetching...")
-    wiki = "http://wsprnet.org/olddb?mode=html&band=all&limit=" + str(nrspots) + "&findcall=&findreporter=&sort=spotnum"
+    # The connection credentials are public, i.e. https://inductivestep.github.io/WSPR-analysis/
     try:
-        page = requests.get(wiki)
-    except requests.exceptions.RequestException as e:
-        print("ERROR",e)
-        return []
-
-#    logging.info(page.status)
-#    logging.info(page.data)
-
-    soup = BeautifulSoup(page.content, 'html.parser')
-
-    data = []
-    table = soup.find_all('table')[2]
-    #print("TABLE:",table)
-
-    rows = table.findAll('tr')
-    for row in rows:
-        cols = row.find_all('td')
-        cols = [ele.text.strip() for ele in cols]
-        data.append([ele for ele in cols if ele]) # Get rid of empty values
-
-    # Strip empty rows
-    newspots = [ele for ele in data if ele] 
-
-    # Strip redundant columns Watt & miles and translate/filter data
-    for row in newspots:
-        #print(row)
-        row[0] = datetime.datetime.strptime(row[0], '%Y-%m-%d %H:%M')
-        row[6] = int(row[6].replace('+',''))
-
-        del row[12]
-        del row[11]
-        del row[7]
-
-    # Reverse the sorting order of time to get new spots firsts
-    newspots.reverse()
-
-    return newspots
-
+        conn = psycopg2.connect("host=logs2.wsprdaemon.org dbname=wsprnet user=wdread password=JTWSPR2008")
+    except psycopg2.OperationalError as err:
+        logging.error("PostgreSQL connect error: " + str(err))
+        conn = None
+    cursor = conn.cursor()
+    cursor.execute('SELECT "wd_time", "CallSign", "MHz", "dB", "Drift", "Grid", "Power", "Reporter", "ReporterGrid", "distance" FROM spots ORDER BY "wd_time" DESC LIMIT ' + str(nrspots))
+    sqldata = cursor.fetchall()
+    tabledata = map(to_list, sqldata)
+    conn.close()
+    return list(tabledata)
 
 # 
 # Dump new spots to db. Note stripping of redundant fields
@@ -155,6 +129,7 @@ try:
                 ['archive=',
                  'csv=',
                  'conf=',
+                 'dry_run'
                 ])
 
 except getopt.GetoptError as err:
@@ -189,9 +164,7 @@ for b in balloons:
       logging.info("%s", str(b))
 
 if dry_run:
-    logging.info("Dru run. No uploads")
-    push_habhub = False
-    push_aprs = False
+    logging.info("Dry run. No uploads")
       
 spots = []
 
@@ -218,7 +191,7 @@ if archive_file:
 
       if len(spots) > 1:
             logging.info("Spots: %s", str(len(spots)))
-            spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs)
+            spots = process_telemetry(spots, balloons, habhub_callsign, push_habhub, push_aprs, push_html, dry_run)
       else:
             logging.info("No spots!")
             
@@ -246,7 +219,7 @@ if csv_file:
       
       if len(spots) > 1:
             logging.info("Spots: %s", str(len(spots)))
-            spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs)
+            spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs, push_html, dry_run)
       else:
             logging.info("No spots!")
 
@@ -254,10 +227,10 @@ if csv_file:
       sys.exit(0)
             
 # Spots to pullfrom wsprnet
-nrspots_pull= 3000
+nrspots_pull= 2000
 spotcache = []
 
-logging.info("Preloading cache from wsprnet...")
+logging.info("Preloading cache from WsprDaemon...")
 spotcache = getspots(10000)
 logging.info("Fspots1: %d",len(spotcache))
 spotcache = balloonfilter(spotcache ,balloons)
@@ -267,14 +240,14 @@ spots = spotcache
 cache_max = 10000
 new_max = 0
 only_balloon=False
-sleeptime = 60
+sleeptime = 75
 
 logging.info("Entering pollingloop.")
 while 1==1:
     tnow = datetime.datetime.now() 
 
-    wwwspots = getspots(nrspots_pull)
-    wwwspots = balloonfilter(wwwspots ,balloons)
+    dbspots = getspots(nrspots_pull)
+    dbspots = balloonfilter(dbspots ,balloons)
     newspots = [] 
 
     # Sort in case some spots arrived out of order
@@ -284,7 +257,7 @@ while 1==1:
     src_cc = 0 
 
     # Loop trough cache and check for new spots
-    for row in wwwspots:
+    for row in dbspots:
         old = 0
         for srow in spotcache:
             # print("testing:",row, "\nagainst:", srow)
@@ -300,6 +273,7 @@ while 1==1:
             
             # Insert in beginning for cache
             spotcache.insert(0, row)
+
 
  #           for w in spotcache:
  #               print("cache2:", w)
@@ -320,11 +294,11 @@ while 1==1:
     spots.sort(reverse=False)   
     spots = deduplicate(spots) # needs sorted list
     # Filter out all spots newer that x minutes
-    spots = timetrim(spots,60)
+    spots = timetrim(spots,7)
 
     if len(spots) > 1:
         logging.info("pre-tele: %d",len(spots))
-        spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs, push_html)
+        spots = process_telemetry(spots, balloons,habhub_callsign, push_habhub, push_aprs, push_html, dry_run)
         logging.info("pro-tele: %s", str(len(spots)))
 
     if new_max < len(newspots):
@@ -341,7 +315,7 @@ while 1==1:
     
     spotcache = spotcache[:cache_max]
 
-    sleeping = sleeptime - int(datetime.datetime.now().strftime('%s')) % sleeptime
+    sleeping = sleeptime - time.time() % sleeptime
 #     logging.info("Sleep:", sleeping)
     time.sleep(sleeping)
 
