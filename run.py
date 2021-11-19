@@ -22,7 +22,7 @@ def getspots (nrspots):
     try:
         conn = psycopg2.connect("host=logs2.wsprdaemon.org dbname=wsprnet user=wdread password=JTWSPR2008")
     except psycopg2.OperationalError as err:
-        logging.error("PostgreSQL connect error: " + err)
+        logging.error("PostgreSQL connect error: " + str(err))
         conn = None
     cursor = conn.cursor()
     cursor.execute('SELECT "wd_time", "CallSign", "MHz", "dB", "Drift", "Grid", "Power", "Reporter", "ReporterGrid", "distance" FROM spots ORDER BY "wd_time" DESC LIMIT ' + str(nrspots))
